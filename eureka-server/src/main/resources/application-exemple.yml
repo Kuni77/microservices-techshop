@@ -1,0 +1,29 @@
+server:
+  port: #port
+
+spring:
+  application:
+    name: eureka-server
+
+  security:
+    user:
+      name: #username
+      password: #userpassword
+
+eureka:
+  instance:
+    hostname: #hostname
+  client:
+    register-with-eureka: false # Eureka ne s'enregistre pas lui-même
+    fetch-registry: false # Eureka ne cherche pas d'autres instances
+    service-url:
+      defaultZone: http://username:userpassword@localhost:port/eureka/
+  server:
+    # Désactive la protection contre la perte de services (pour dev)
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 5000
+
+logging:
+  level:
+    com.netflix.eureka: DEBUG
+    com.netflix.discovery: DEBUG
