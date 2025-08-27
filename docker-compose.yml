@@ -1,4 +1,3 @@
-# docker-compose.yml - VERSION GITHUB SAFE
 services:
   postgres:
     image: postgres:15-alpine
