@@ -1,0 +1,133 @@
+server:
+  port:   # Port public de l'API Gateway
+
+spring:
+  application:
+    name: api-gateway
+
+  # ✅ Configuration Redis (AJOUTER CETTE SECTION)
+  data:
+    redis:
+      host:
+      port: #redis-port
+      password: #redis password  # Correspond au docker-compose
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+        shutdown-timeout: 100ms
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true  # Active la découverte automatique des services
+              lower-case-service-id: true  # Les noms de services en minuscules
+          # Routes explicites (optionnelles mais recommandées pour plus de contrôle)
+          routes:
+            # Route pour le User Service
+            - id: idus
+              uri: lb://idus  # lb = load balancer via Eureka
+              predicates:
+                - Path=/api/auth/**, /api/users/**
+              filters:
+                - StripPrefix=1  # Enlève /api du chemin
+                - name: CircuitBreaker
+                  args:
+                    name: idus-cb
+                    fallbackUri: forward:/fallback/idus
+
+            # Route pour le Product Service
+            - id: #idpds
+              uri: lb://idpds
+              predicates:
+                - Path=/api/products/**
+              filters:
+                - StripPrefix=1
+                - name: CircuitBreaker
+                  args:
+                    name: idpds-cb
+                    fallbackUri: forward:/fallback/idpds
+
+            # Route pour le Order Service
+            - id: #idos
+              uri: lb://idos
+              predicates:
+                - Path=/api/orders/**
+              filters:
+                - StripPrefix=1
+
+            # Route pour le Search Service
+            - id: #idss
+              uri: lb://idss
+              predicates:
+                - Path=/api/search/**
+              filters:
+                - StripPrefix=1
+
+            # Route pour Eureka (pour voir le dashboard)
+            - id: idew
+              uri: http://localhost:#port-eureka
+              predicates:
+                - Path=/eureka/web
+              filters:
+                - SetPath=/
+
+            # Route pour les ressources statiques d'Eureka
+            - id: ider
+              uri: http://localhost:#port-eureka
+              predicates:
+                - Path=/eureka/**
+          # Configuration CORS globale
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - "http://localhost:port-angular"  # Frontend Angular
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders:
+                  - "*"
+                allow-credentials: true
+            #Configuration par défaut pour tous les services
+          default-filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+
+# Configuration Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: http://user:userpassword@localhost:eurekaport/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+# Actuator pour le monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG
