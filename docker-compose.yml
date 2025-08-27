@@ -1,34 +1,30 @@
-# docker-compose.yml (à la racine du projet)
-# Note: 'version' est obsolète dans les nouvelles versions de Docker Compose
-
+# docker-compose.yml - VERSION GITHUB SAFE
 services:
-  # Base de données PostgreSQL
   postgres:
     image: postgres:15-alpine
     container_name: techshop-postgres
     environment:
-      POSTGRES_DB: techshop
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: ${POSTGRES_DB:-techshop}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}  # ⚠️ À changer en production
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d techshop"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-techshop}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # MongoDB pour le Product Service (IMAGE CORRIGÉE)
   mongodb:
-    image: mongo:7.0-jammy  # ✅ Version qui existe
+    image: mongo:7.0-jammy
     container_name: techshop-mongo
     ports:
-      - "27017:27017"
+      - "${MONGO_PORT:-27017}:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -37,16 +33,15 @@ services:
       timeout: 5s
       retries: 5
 
-  # RabbitMQ pour les messages
   rabbitmq:
-    image: rabbitmq:3.12-management-alpine  # ✅ Version stable
+    image: rabbitmq:3.12-management-alpine
     container_name: techshop-rabbitmq
     ports:
-      - "5672:5672"    # Port AMQP
-      - "15672:15672"  # Interface web admin
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: password123
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-changeme}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -55,7 +50,6 @@ services:
       timeout: 30s
       retries: 3
 
-  # Elasticsearch pour la recherche (VERSION COMPATIBLE)
   elasticsearch:
     image: elasticsearch:8.11.3
     container_name: techshop-elasticsearch
@@ -65,7 +59,7 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - bootstrap.memory_lock=true
     ports:
-      - "9200:9200"
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     ulimits:
@@ -78,17 +72,16 @@ services:
       timeout: 10s
       retries: 5
 
-  # Redis pour le cache et rate limiting
   redis:
     image: redis:7.2-alpine
     container_name: techshop-redis
     ports:
-      - "6379:6379"
-    command: redis-server --requirepass password123 --appendonly yes
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme} --appendonly yes
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "password123", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
