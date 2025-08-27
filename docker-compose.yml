@@ -1,0 +1,106 @@
+# docker-compose.yml (à la racine du projet)
+# Note: 'version' est obsolète dans les nouvelles versions de Docker Compose
+
+services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: techshop-postgres
+    environment:
+      POSTGRES_DB: techshop
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d techshop"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB pour le Product Service (IMAGE CORRIGÉE)
+  mongodb:
+    image: mongo:7.0-jammy  # ✅ Version qui existe
+    container_name: techshop-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ pour les messages
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine  # ✅ Version stable
+    container_name: techshop-rabbitmq
+    ports:
+      - "5672:5672"    # Port AMQP
+      - "15672:15672"  # Interface web admin
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  # Elasticsearch pour la recherche (VERSION COMPATIBLE)
+  elasticsearch:
+    image: elasticsearch:8.11.3
+    container_name: techshop-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis pour le cache et rate limiting
+  redis:
+    image: redis:7.2-alpine
+    container_name: techshop-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass password123 --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "password123", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  redis_data:
+    driver: local
