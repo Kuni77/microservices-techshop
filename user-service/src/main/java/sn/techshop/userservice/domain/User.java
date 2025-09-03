@@ -5,13 +5,17 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.validator.constraints.UUID;
+import org.springframework.data.relational.core.mapping.Table;
+import sn.techshop.userservice.domain.audit.Auditable;
 
+@EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
 @ToString
-public class User {
+@Table("users")
+public class User extends Auditable<Integer> {
     @UUID
     private String id;
 
@@ -33,5 +37,17 @@ public class User {
 
     private Role role = Role.USER;
 
-    private Boolean active = true;
+    private Boolean enabled = true;
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
+
+    public boolean isAdmin() {
+        return role == Role.ADMIN;
+    }
+
+    public boolean isEnabled() {
+        return enabled != null && enabled;
+    }
 }
